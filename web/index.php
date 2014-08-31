@@ -28,6 +28,26 @@ $app->error(function (\Exception $e, $code) {
 });
 
 /**
+ * Function for executing cURL requests
+ *
+ * @param $url string The URL to retrieve
+ * @return string
+ */
+function curlRequest($url)
+{
+    $curlRequest = curl_init();
+    curl_setopt_array($curlRequest, array(
+        CURLOPT_URL => str_replace(' ', '', $url),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER => 0,
+    ));
+    
+    $curlResult = curl_exec($curlRequest);
+    curl_close($curlRequest);
+    return $curlResult;
+}
+
+/**
  * Route for retrieving location data of a gym
  */
 $app->get('/location/{locationId}', function(Application $app, $locationId) {
@@ -37,15 +57,7 @@ $app->get('/location/{locationId}', function(Application $app, $locationId) {
         );
     
         
-    $curlRequest = curl_init();
-    curl_setopt_array($curlRequest, array(
-        CURLOPT_URL => str_replace(' ', '', $locationUrl),
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HEADER => 0,
-    ));
-    
-    $curlResult = curl_exec($curlRequest);
-    curl_close($curlRequest);
+    $curlResult = curlRequest($locationUrl);
     
     if($curlResult) {
         $crawler = new Crawler($curlResult);
@@ -95,15 +107,7 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
             $teamConfig['competition']
         );
         
-        $curlRequest = curl_init();
-        curl_setopt_array($curlRequest, array(
-            CURLOPT_URL => str_replace(' ', '', $seasonUrl),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER => 0,
-        ));
-        
-        $curlResult = curl_exec($curlRequest);
-        curl_close($curlRequest);
+        $curlResult = curlRequest($seasonUrl);
         
         if($curlResult) {
             $crawler = new Crawler($curlResult);
