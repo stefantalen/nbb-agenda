@@ -80,18 +80,23 @@ $app->get('/{team}/{year}', function(Application $app, $team, (int) $year)
                 }
             }
             
-            $response = new Response($vCalendar->render(), 200, array(
-                'Content-Type' => 'text/calendar; charset=utf-8',
-                'Content-Disposition' => 'inline; filename="'. $app['config']['file_prefix'] . $app['request']->getPathInfo() .'.ics"')
-            );
+            if($app['debug'])
+            {
+                return new Response($vCalendar->render(), 200);
+            } else {
+                $response = new Response($vCalendar->render(), 200, array(
+                    'Content-Type' => 'text/calendar; charset=utf-8',
+                    'Content-Disposition' => 'inline; filename="'. $app['config']['file_prefix'] . $app['request']->getPathInfo() .'.ics"')
+                );
+                    
+                // Caching rules for the response
+                $response
+                    ->setPublic()
+                    ->setSharedMaxAge(43200) // 12 hours
+                ;
                 
-            // Caching rules for the response
-            $response
-                ->setPublic()
-                ->setSharedMaxAge(43200) // 12 hours
-            ;
-            
-            return $response;
+                return $response;
+            }
         } else {
             $app->abort(417, "There was an error requesting the page");
         }
