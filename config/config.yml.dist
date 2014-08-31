@@ -1,3 +1,4 @@
+gmaps_api_key: ~
 file_prefix: "calendar"
 teams:
     h1:
