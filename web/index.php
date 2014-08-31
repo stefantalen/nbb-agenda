@@ -77,12 +77,19 @@ $app->get('/{team}/{year}', function($year, $team) use($app)
                     $vCalendar->addEvent($vEvent);
                 }
             }
-        
-            return new Response($vCalendar->render(), 200, array(
+            
+            $response = new Response($vCalendar->render(), 200, array(
                 'Content-Type' => 'text/calendar; charset=utf-8',
-                'Content-Disposition' => 'inline; filename="'. $app['config']['file_prefix'] . $app['request']->getPathInfo() .'.ics"',
-                'Cache-Control' => 's-maxage=1, public'
-            ));
+                'Content-Disposition' => 'inline; filename="'. $app['config']['file_prefix'] . $app['request']->getPathInfo() .'.ics"')
+            );
+                
+            // Caching rules for the response
+            $response
+                ->setPublic()
+                ->setSharedMaxAge(43200) // 12 hours
+            ;
+            
+            return $response;
         } else {
             $app->abort(417, "There was an error requesting the page");
         }
