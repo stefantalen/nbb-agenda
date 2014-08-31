@@ -53,9 +53,8 @@ function curlRequest($url)
 $app->get('/location/{locationId}', function(Application $app, $locationId) {
     $locationUrl = sprintf(
         "http://west.basketball.nl/cgi-bin/route.pl?loc_ID=%1d",
-            $locationId
-        );
-    
+        $locationId
+    );
         
     $curlResult = curlRequest($locationUrl);
     
@@ -74,8 +73,24 @@ $app->get('/location/{locationId}', function(Application $app, $locationId) {
                     'street' => $addressData[0],
                     'zipcode' => $zipcodeData[0] .' '. $zipcodeData[1],
                     'city' => $zipcodeData[2],
-                    'phonenumber' => $addressData[2]
+                    'phonenumber' => $addressData[2],
+                    'lat' => null,
+                    'lng' => null
                 );
+                // Only request latitude and longitude when an API key is provided
+                if($app['config']['gmaps_api_key'])
+                {
+                    $gmapsUrl = sprintf(
+                        "https://maps.googleapis.com/maps/api/geocode/json?address=%1s&key=%2s",
+                        str_replace(' ', '+', $locationData['street'] .' '. $locationData['city']),
+                        $app['config']['gmaps_api_key']
+                    );
+                    $gmapsData = json_decode(curlRequest($gmapsUrl));
+                    if($gmapsData->status === "OK") {
+                        $locationData['lat'] = $gmapsData->results[0]->geometry->location->lat;
+                        $locationData['lng'] = $gmapsData->results[0]->geometry->location->lng;
+                    }
+                }
             }
             return new JsonResponse($locationData, 200);
         } else {
