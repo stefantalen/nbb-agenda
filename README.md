@@ -17,7 +17,7 @@ Configuration
 
 Copy and rename `config/config.yml.dist` to `config.yml`.
 
-Each team requires a team ID and a competition ID these can be found on [http://west.basketball.nl][1]. First select the competition in which the team plays, press "Selecteren". Open the source of the page, the competion ID can be found in the HTML-element `<select name="cmp_ID">`. Since you've previously selected it, it is the one with `selected="selected". Search for the HTML-element `<select name="plg_ID">` to get the team ID for your team.
+Each team requires a team ID and a competition ID these can be found on [http://west.basketball.nl][1]. First select the competition in which the team plays, press "Selecteren". Open the source of the page, the competion ID can be found in the HTML-element `<select name="cmp_ID">`. Since you've previously selected it, it is the one with `selected="selected"`. Search for the HTML-element `<select name="plg_ID">` to get the team ID for your team.
 
 Fill the `team`-array in *config.yml* with teams like so:
 
