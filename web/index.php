@@ -26,7 +26,7 @@ $app->error(function (\Exception $e, $code) {
     return new Response($e->getMessage());
 });
 
-$app->get('/{team}/{year}', function(Application $app, $team, (int) $year)
+$app->get('/{team}/{year}', function(Application $app, $team, $year)
 {
     if(!isset($app['config']['teams'][$team])) {
         $app->abort(501, "The requested team hasn't been configured.");
