@@ -1,0 +1,6 @@
+file_prefix: "calendar"
+teams:
+    h1:
+        2014:
+            team_id: ~
+            competition: ~
