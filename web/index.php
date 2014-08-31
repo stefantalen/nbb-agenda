@@ -4,6 +4,7 @@ require_once __DIR__.'/../vendor/autoload.php';
 use Silex\Application;
 
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Yaml\Parser;
 use Symfony\Component\DomCrawler\Crawler;
@@ -26,6 +27,57 @@ $app->error(function (\Exception $e, $code) {
     return new Response($e->getMessage());
 });
 
+/**
+ * Route for retrieving location data of a gym
+ */
+$app->get('/location/{locationId}', function(Application $app, $locationId) {
+    $locationUrl = sprintf(
+        "http://west.basketball.nl/cgi-bin/route.pl?loc_ID=%1d",
+            $locationId
+        );
+    
+        
+    $curlRequest = curl_init();
+    curl_setopt_array($curlRequest, array(
+        CURLOPT_URL => str_replace(' ', '', $locationUrl),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER => 0,
+    ));
+    
+    $curlResult = curl_exec($curlRequest);
+    curl_close($curlRequest);
+    
+    if($curlResult) {
+        $crawler = new Crawler($curlResult);
+        $crawler = $crawler->filter('table tr[class="dark"]')->each(function(Crawler $node, $i) {
+            return $node->filter('td')->each(function(Crawler $node) { return $node->html(); });
+        });
+        if(sizeof($crawler) > 1) {
+            $locationData = array();
+            foreach($crawler as $data) {
+                $addressData = explode('<br>', $data[1]);
+                $zipcodeData = explode(' ', $addressData[1]);
+                $locationData = array(
+                    'title' =>preg_replace('/\s\((.*)\)$/', '', $data[0]),
+                    'street' => $addressData[0],
+                    'zipcode' => $zipcodeData[0] .' '. $zipcodeData[1],
+                    'city' => $zipcodeData[2],
+                    'phonenumber' => $addressData[2]
+                );
+            }
+            return new JsonResponse($locationData, 200);
+        } else {
+            $app->abort(417, "The page was found but there was no data");
+        }
+    } else {
+        $app->abort(417, "There was an error requesting the location data");
+    }
+})
+->assert('locationId', '\d+');
+
+/**
+ * Route for scraping the match schedule
+ */
 $app->get('/{team}/{year}', function(Application $app, $team, $year)
 {
     if(!isset($app['config']['teams'][$team])) {
