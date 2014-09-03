@@ -44,14 +44,28 @@ If you want to show the geo location of gyms (Only support by Apple) request a [
 Usage
 ------------
 
-Each teams match calendar can be reached by using the team name and year in the URL. Assuming your document root is the `web`-folder this should be the request format: /{team name}/{first year of season}
+Each teams match calendar can be reached by using the team name and year in the URL. Assuming your document root is the `web`-folder this would be a request URL: `webcal://your.domain/h1/2014`
 
-Every request is being cache for a day to prevent flooding of the roster page.
+Using the `webcal`-protocol adds the calendar as a subscription instead of individual events.
 
-The URLs can be used for calendar subscriptions, instructions can be found here:
+You can also use the `http`-protocol and manually add the URL for calendar subscriptions, instructions can be found here:
 
 - [Apple Calendar][3]
 - [Google Calendar][4]
+
+Caching
+------------
+
+Every request is being cache for 12 hours to prevent flooding of the roster page.
+
+Requests for gym details is being cached for 5 days.
+
+Contributions
+------------
+
+You are more than welcome to suggest enhancements or new features.
+
+If want to submit code, please submit your pull request to the develop branch.
 
 [1]: http://west.basketball.nl/db/wedstrijd/uitslag.pl?
 [2]: http://www.redgiants.nl
