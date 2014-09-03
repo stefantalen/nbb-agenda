@@ -162,6 +162,7 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
                             $geoData->street,
                             $geoData->zipcode,
                             $geoData->city), $geoData->title, $geoData->lat .','. $geoData->lng);
+                        $vEvent->setDescription('Telefoonnummer sporthal: '. $geoData->phonenumber);
                     } else {
                         // If there was no data available just use the table data
                         preg_match('/<a(.*)>(.*)<\/a>/', $match[4], $gymResult);
@@ -171,7 +172,7 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
                     $vCalendar->addEvent($vEvent);
                 }
             }
-            
+
             if($app['debug'])
             {
                 return new Response($vCalendar->render(), 200);
@@ -180,13 +181,13 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
                     'Content-Type' => 'text/calendar; charset=utf-8',
                     'Content-Disposition' => 'inline; filename="'. $app['config']['file_prefix'] . $app['request']->getPathInfo() .'.ics"')
                 );
-                    
+
                 // Caching rules for the response
                 $response
                     ->setPublic()
                     ->setSharedMaxAge(43200) // 12 hours
                 ;
-                
+
                 return $response;
             }
         } else {
