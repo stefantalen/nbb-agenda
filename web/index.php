@@ -18,6 +18,8 @@ $app = new Application();
 $app->register(new Silex\Provider\HttpCacheServiceProvider(), array(
     'http_cache.cache_dir' => __DIR__.'/../cache/',
 ));
+// Register URL generator
+$app->register(new Silex\Provider\UrlGeneratorServiceProvider());
 
 // Loading config
 $yaml = new Parser();
@@ -100,6 +102,7 @@ $app->get('/location/{locationId}', function(Application $app, $locationId) {
         $app->abort(417, "There was an error requesting the location data");
     }
 })
+->bind('location')
 ->assert('locationId', '\d+');
 
 /**
@@ -173,6 +176,7 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
         }
     }
 })
+->bind('agenda')
 ->assert('year', '\d{4}');
 
 Request::setTrustedProxies(array('127.0.0.1'));
