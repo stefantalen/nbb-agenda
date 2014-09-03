@@ -39,6 +39,8 @@ This is an example configuration file for the first and second team of [Red Gian
                 team_id: 1788
                 competition: 367
 
+If you want to show the geo location of gyms (Only support by Apple) request a [Google Maps API key][5] and paste it in to the `gmaps_api_key` configuration variable in `config.yml`.
+
 Usage
 ------------
 
@@ -55,3 +57,4 @@ The URLs can be used for calendar subscriptions, instructions can be found here:
 [2]: http://www.redgiants.nl
 [3]: http://support.apple.com/kb/PH11523
 [4]: https://support.google.com/calendar/answer/37100?hl=en
+[5]: https://developers.google.com/maps/documentation/geocoding/?hl=en#api_key
