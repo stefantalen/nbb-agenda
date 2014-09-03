@@ -43,7 +43,7 @@ function curlRequest($url)
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HEADER => 0,
     ));
-    
+
     $curlResult = curl_exec($curlRequest);
     curl_close($curlRequest);
     return $curlResult;
@@ -57,15 +57,13 @@ $app->get('/location/{locationId}', function(Application $app, $locationId) {
         "http://west.basketball.nl/cgi-bin/route.pl?loc_ID=%1d",
         $locationId
     );
-        
     $curlResult = curlRequest($locationUrl);
-    
     if($curlResult) {
         $crawler = new Crawler($curlResult);
         $crawler = $crawler->filter('table tr[class="dark"]')->each(function(Crawler $node, $i) {
             return $node->filter('td')->each(function(Crawler $node) { return $node->html(); });
         });
-        if(sizeof($crawler) > 1) {
+        if(sizeof($crawler[0]) > 0) {
             $locationData = array();
             foreach($crawler as $data) {
                 $addressData = explode('<br>', $data[1]);
@@ -80,7 +78,7 @@ $app->get('/location/{locationId}', function(Application $app, $locationId) {
                     'lng' => null
                 );
                 // Only request latitude and longitude when an API key is provided
-                if($app['config']['gmaps_api_key'])
+                if(isset($app['config']['gmaps_api_key']))
                 {
                     $gmapsUrl = sprintf(
                         "https://maps.googleapis.com/maps/api/geocode/json?address=%1s&key=%2s",
@@ -94,7 +92,12 @@ $app->get('/location/{locationId}', function(Application $app, $locationId) {
                     }
                 }
             }
-            return new JsonResponse($locationData, 200);
+            $jsonResponse = new JsonResponse($locationData, 200);
+            $jsonResponse
+                ->setPublic()
+                ->setSharedMaxAge(43200) // 12 hours
+            ;
+            return $jsonResponse;
         } else {
             $app->abort(417, "The page was found but there was no data");
         }
@@ -116,7 +119,7 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
         $app->abort(501, "The requested season hasn't been configured.");
     } else {
         $teamConfig = $app['config']['teams'][$team][$year];
-        
+
         $seasonUrl = sprintf(
             "http://west.basketball.nl/db/wedstrijd/uitslag.pl?szn_Naam=%1d-%2d&plg_ID=%3d&cmp_ID=%4d&Sorteer=wed_Datum&LVactie=Wedstrijdgegevens&nummer=off&statistieken=off&advertentie=off&menubalk=off&title=off&warning=off",
             $year,
@@ -124,13 +127,13 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
             $teamConfig['team_id'],
             $teamConfig['competition']
         );
-        
+
         $curlResult = curlRequest($seasonUrl);
-        
+
         if($curlResult) {
             $crawler = new Crawler($curlResult);
             $crawler = $crawler->filter('table table > tr')->each(function(Crawler $node, $i) {
-                return $node->filter('td')->each(function(Crawler $node, $i) { return $node->text(); });
+                return $node->filter('td')->each(function(Crawler $node, $i) { return $node->html(); });
             });
             $vCalendar = new Calendar($app['request']->getPathInfo());
             foreach($crawler as $match)
@@ -144,12 +147,27 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
                         ->setDtEnd($endDate->add(new \DateInterval('PT2H')))
                         ->setSummary($match[2] .' - '. $match[3])
                         ->setUseTimezone(true)
-                        ->setLocation($match[4])
                     ;
                     $score = trim($match[5]);
                     if($score !== '0 - 0') {
                         $vEvent->setSummary($match[2] .' - '. $match[3] .' ('. $score .')');
                     }
+                    preg_match('/\?loc_ID=(\d+)"/', $match[4], $gymResult);
+                    $geoData = json_decode(curlRequest($app['request']->server->get('SERVER_NAME').$app['url_generator']->generate('location', array('locationId' => $gymResult[1]))));
+
+                    if($geoData) {
+                        $vEvent->setLocation(sprintf(
+                            "%1s\n%2s\n%3s %4s",
+                            $geoData->title,
+                            $geoData->street,
+                            $geoData->zipcode,
+                            $geoData->city), $geoData->title, $geoData->lat .','. $geoData->lng);
+                    } else {
+                        // If there was no data available just use the table data
+                        preg_match('/<a(.*)>(.*)<\/a>/', $match[4], $gymResult);
+                        $vEvent->setLocation($gymResult[2]);
+                    }
+
                     $vCalendar->addEvent($vEvent);
                 }
             }
