@@ -95,7 +95,7 @@ $app->get('/location/{locationId}', function(Application $app, $locationId) {
             $jsonResponse = new JsonResponse($locationData, 200);
             $jsonResponse
                 ->setPublic()
-                ->setSharedMaxAge(43200) // 12 hours
+                ->setSharedMaxAge(86400*5) // 5 days
             ;
             return $jsonResponse;
         } else {
