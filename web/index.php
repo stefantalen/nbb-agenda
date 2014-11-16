@@ -54,7 +54,7 @@ function curlRequest($url)
  */
 $app->get('/location/{locationId}', function(Application $app, $locationId) {
     $locationUrl = sprintf(
-        "http://west.basketball.nl/cgi-bin/route.pl?loc_ID=%1d",
+        "http://db.basketball.nl/cgi-bin/route.pl?loc_ID=%1d",
         $locationId
     );
     $curlResult = curlRequest($locationUrl);
@@ -121,7 +121,7 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
         $teamConfig = $app['config']['teams'][$team][$year];
 
         $seasonUrl = sprintf(
-            "http://west.basketball.nl/db/wedstrijd/uitslag.pl?szn_Naam=%1d-%2d&plg_ID=%3d&cmp_ID=%4d&Sorteer=wed_Datum&LVactie=Wedstrijdgegevens&nummer=off&statistieken=off&advertentie=off&menubalk=off&title=off&warning=off",
+            "http://db.basketball.nl/db/wedstrijd/uitslag.pl?szn_Naam=%1d-%2d&plg_ID=%3d&cmp_ID=%4d&Sorteer=wed_Datum&LVactie=Wedstrijdgegevens&nummer=off&statistieken=off&advertentie=off&menubalk=off&title=off&warning=off",
             $year,
             $year+1,
             $teamConfig['team_id'],
