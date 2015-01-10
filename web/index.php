@@ -153,7 +153,7 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
                         $vEvent->setSummary($match[2] .' - '. $match[3] .' ('. $score .')');
                     }
                     preg_match('/\?loc_ID=(\d+)"/', $match[4], $gymResult);
-                    $geoData = json_decode(curlRequest($app['request']->server->get('SERVER_NAME').$app['url_generator']->generate('location', array('locationId' => $gymResult[1]))));
+                    $geoData = json_decode(curlRequest($app['request']->server->get('HTTP_HOST').$app['url_generator']->generate('location', array('locationId' => $gymResult[1]))));
 
                     if($geoData) {
                         $vEvent->setLocation(sprintf(
