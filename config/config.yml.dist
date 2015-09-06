@@ -2,6 +2,11 @@ gmaps_api_key: ~
 file_prefix: "calendar"
 teams:
     h1:
-        2014:
-            team_id: ~
-            competition: ~
+        team_id: ~
+        competition: ~
+        practices:
+            monday: "19:00 - 20:30"
+            wednesday: "19:00 - 20:30"
+practices:
+    start: "2015-08-17"
+    end: "2016-06-01"

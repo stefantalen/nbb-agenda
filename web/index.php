@@ -11,6 +11,7 @@ use Symfony\Component\DomCrawler\Crawler;
 
 use Eluceo\iCal\Component\Calendar;
 use Eluceo\iCal\Component\Event;
+use Eluceo\iCal\Property\Event\RecurrenceRule;
 
 $app = new Application();
 
@@ -24,6 +25,8 @@ $app->register(new Silex\Provider\UrlGeneratorServiceProvider());
 // Loading config
 $yaml = new Parser();
 $app['config'] = $yaml->parse(file_get_contents('../config/config.yml'));
+
+$app['debug'] = false;
 
 $app->error(function (\Exception $e, $code) {
     return new Response($e->getMessage());
@@ -52,20 +55,20 @@ function curlRequest($url)
 /**
  * Route for retrieving location data of a gym
  */
-$app->get('/location/{locationId}', function(Application $app, $locationId) {
+$app->get('/location/{locationId}', function (Application $app, $locationId) {
     $locationUrl = sprintf(
         "http://db.basketball.nl/cgi-bin/route.pl?loc_ID=%1d",
         $locationId
     );
     $curlResult = curlRequest($locationUrl);
-    if($curlResult) {
+    if ($curlResult) {
         $crawler = new Crawler($curlResult);
-        $crawler = $crawler->filter('table tr[class="dark"]')->each(function(Crawler $node, $i) {
+        $crawler = $crawler->filter('table tr[class="dark"]')->each(function (Crawler $node, $i) {
             return $node->filter('td')->each(function(Crawler $node) { return $node->html(); });
         });
-        if(sizeof($crawler[0]) > 0) {
+        if (sizeof($crawler[0]) > 0) {
             $locationData = array();
-            foreach($crawler as $data) {
+            foreach ($crawler as $data) {
                 $addressData = explode('<br>', $data[1]);
                 $zipcodeData = explode(' ', $addressData[1]);
                 $locationData = array(
@@ -78,8 +81,7 @@ $app->get('/location/{locationId}', function(Application $app, $locationId) {
                     'lng' => null
                 );
                 // Only request latitude and longitude when an API key is provided
-                if(isset($app['config']['gmaps_api_key']))
-                {
+                if (isset($app['config']['gmaps_api_key'])) {
                     $gmapsUrl = sprintf(
                         "https://maps.googleapis.com/maps/api/geocode/json?address=%1s&key=%2s",
                         str_replace(' ', '+', $locationData['street'] .' '. $locationData['city']),
@@ -111,17 +113,18 @@ $app->get('/location/{locationId}', function(Application $app, $locationId) {
 /**
  * Route for scraping the match schedule
  */
-$app->get('/{team}/{year}', function(Application $app, $team, $year)
+$app->get('/{team}', function(Application $app, $team)
 {
     if(!isset($app['config']['teams'][$team])) {
         $app->abort(501, "The requested team hasn't been configured.");
-    } elseif(!isset($app['config']['teams'][$team][$year])) {
-        $app->abort(501, "The requested season hasn't been configured.");
     } else {
-        $teamConfig = $app['config']['teams'][$team][$year];
-
+        $teamConfig = $app['config']['teams'][$team];
+        
+        $currentDate = new \DateTime();
+        $year = $currentDate->format("m") < 9 ? $currentDate->format('Y') - 1 : (int) $currentDate->format('Y');
+        
         $seasonUrl = sprintf(
-            "http://db.basketball.nl/db/wedstrijd/uitslag.pl?szn_Naam=%1d-%2d&plg_ID=%3d&cmp_ID=%4d&Sorteer=wed_Datum&LVactie=Wedstrijdgegevens&nummer=off&statistieken=off&advertentie=off&menubalk=off&title=off&warning=off",
+            'http://db.basketball.nl/db/wedstrijd/uitslag.pl?szn_Naam=%1$d-%2$d&plg_ID=%3$d&cmp_ID=%4$d&Sorteer=wed_Datum&LVactie=Wedstrijdgegevens&nummer=off&statistieken=off&advertentie=off&menubalk=off&title=off&warning=off',
             $year,
             $year+1,
             $teamConfig['team_id'],
@@ -129,16 +132,16 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
         );
 
         $curlResult = curlRequest($seasonUrl);
+        
+        $vCalendar = new Calendar($app['request']->getPathInfo());
 
-        if($curlResult) {
+        if ($curlResult) {
             $crawler = new Crawler($curlResult);
             $crawler = $crawler->filter('table table > tr')->each(function(Crawler $node, $i) {
                 return $node->filter('td')->each(function(Crawler $node, $i) { return $node->html(); });
             });
-            $vCalendar = new Calendar($app['request']->getPathInfo());
-            foreach($crawler as $match)
-            {
-                if(sizeof($match) > 0) {
+            foreach ($crawler as $match) {
+                if (sizeof($match) > 0) {
                     $startDate = \DateTime::createFromFormat('d-m-Y H:i', $match[0] .' '. $match[1], new \DateTimeZone('Europe/Amsterdam'));
                     $endDate = clone $startDate;
                     $vEvent = new Event();
@@ -149,13 +152,13 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
                         ->setUseTimezone(true)
                     ;
                     $score = trim($match[5]);
-                    if($score !== '0 - 0') {
+                    if ($score !== '0 - 0') {
                         $vEvent->setSummary($match[2] .' - '. $match[3] .' ('. $score .')');
                     }
                     preg_match('/\?loc_ID=(\d+)"/', $match[4], $gymResult);
                     $geoData = json_decode(curlRequest($app['request']->server->get('HTTP_HOST').$app['url_generator']->generate('location', array('locationId' => $gymResult[1]))));
 
-                    if($geoData) {
+                    if ($geoData) {
                         $vEvent->setLocation(sprintf(
                             "%1s\n%2s\n%3s %4s",
                             $geoData->title,
@@ -172,14 +175,55 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
                     $vCalendar->addEvent($vEvent);
                 }
             }
+            // Add practices when requested
+            if ($app['request']->query->get('practices') && $app['request']->query->get('practices') === '1') {
+                // Add practices if they have been set and a start and end date have been set.
+                if (array_key_exists('practices', $teamConfig) && array_key_exists('practices', $app['config']) && (array_key_exists('start', $app['config']['practices']) && array_key_exists('end', $app['config']['practices']))) {
+                    $practiceStart = \DateTime::createFromFormat('Y-m-d H:i:s', $app['config']['practices']['start'] .'00:00:00');
+                    $practiceEnd = \DateTime::createFromFormat('Y-m-d H:i:s', $app['config']['practices']['end'] .'23:59:59');
+                    $practiceWeeks = (int) ceil($practiceStart->diff($practiceEnd)->days / 7);
+                    
+                    
+                    foreach ($teamConfig['practices'] as $practiceDay => $practiceTime) {
+                        preg_match_all('/[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}/', $practiceTime, $times);
+                        $startTime = explode(':', $times[0][0]);
+                        $endTime = explode(':', $times[0][1]);
+                        
+                        $startDate = clone $practiceStart;
+                        $startDate->modify("next ". $practiceDay);
+                        if ($startDate->diff($practiceStart)->days  === 7) {
+                            $startDate = $practiceStart;
+                        }
+                        $endDate = clone $startDate;
+                        // Setting the time
+                        $startDate->setTime((int) $startTime[0], (int) $startTime[1]);
+                        $endDate->setTime((int) $endTime[0], (int) $endTime[1]);
+                     
+                        $vEvent = new Event();
+                        $vEvent
+                            ->setDtStart($startDate)
+                            ->setDtEnd($endDate)
+                            ->setSummary('Training '. strtoupper($team))
+                            ->setUseTimezone(true)
+                        ;
+                        $recurrenceRule = new RecurrenceRule();
+                        $recurrenceRule
+                            ->setFreq(RecurrenceRule::FREQ_WEEKLY)
+                            ->setInterval(1)
+                            ->setCount($practiceWeeks);
+                        ;
+                        $vEvent->setRecurrenceRule($recurrenceRule);
+                        $vCalendar->addEvent($vEvent);
+                    }
+                }
+            }
 
-            if($app['debug'])
-            {
+            if ($app['debug']) {
                 return new Response($vCalendar->render(), 200);
             } else {
                 $response = new Response($vCalendar->render(), 200, array(
                     'Content-Type' => 'text/calendar; charset=utf-8',
-                    'Content-Disposition' => 'inline; filename="'. $app['config']['file_prefix'] . $app['request']->getPathInfo() .'.ics"')
+                    'Content-Disposition' => 'inline; filename="'. $app['config']['file_prefix'] . $team .'-'. $year .'-'. $year + 1 .'.ics"')
                 );
 
                 // Caching rules for the response
@@ -195,11 +239,10 @@ $app->get('/{team}/{year}', function(Application $app, $team, $year)
         }
     }
 })
-->bind('agenda')
-->assert('year', '\d{4}');
+->bind('agenda');
 
 Request::setTrustedProxies(array('127.0.0.1'));
-if($app['debug']) {
+if ($app['debug']) {
     $app->run();
 } else {
     $app['http_cache']->run();
