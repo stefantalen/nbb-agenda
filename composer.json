@@ -2,7 +2,7 @@
     "name": "stefantalen/nbb-agenda",
     "description": "A simple Silex application for generating match calendars for your team in any dutch basketball competition",
     "license" : "MIT",
-    "version" : "1.0",
+    "version" : "1.0.1",
     "authors": [
         {
             "name": "Stefan Talen",
