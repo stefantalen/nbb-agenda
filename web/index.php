@@ -121,7 +121,7 @@ $app->get('/{team}', function(Application $app, $team)
         $teamConfig = $app['config']['teams'][$team];
         
         $currentDate = new \DateTime();
-        $year = $currentDate->format("m") < 9 ? $currentDate->format('Y') - 1 : (int) $currentDate->format('Y');
+        $year = $currentDate->format("m") < 8 ? $currentDate->format('Y') - 1 : (int) $currentDate->format('Y');
         
         $seasonUrl = sprintf(
             'http://db.basketball.nl/db/wedstrijd/uitslag.pl?szn_Naam=%1$d-%2$d&plg_ID=%3$d&cmp_ID=%4$d&Sorteer=wed_Datum&LVactie=Wedstrijdgegevens&nummer=off&statistieken=off&advertentie=off&menubalk=off&title=off&warning=off',
